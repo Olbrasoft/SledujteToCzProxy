@@ -1,6 +1,7 @@
 <%@ WebHandler Language="C#" Class="SearchHandler" %>
 
 using System;
+using System.Configuration;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -9,7 +10,10 @@ using System.Web.Caching;
 
 public class SearchHandler : IHttpHandler
 {
-    private const string SharedSecret = "***REDACTED-PROXY-SECRET***";
+    // Read from web.config → secrets.config (gitignored). Sync with cr-web
+    // SLEDUJTETO_PROXY_KEY on every rotation.
+    private static readonly string SharedSecret =
+        ConfigurationManager.AppSettings["SharedSecret"] ?? "";
 
     public void ProcessRequest(HttpContext ctx)
     {

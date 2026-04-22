@@ -71,13 +71,23 @@ curl -s 'https://sledujteto.aspfree.cz/Hash.ashx?id=15546&key=<secret>' | jq .cd
 
 ## Shared secret rotation
 
-1. Generate a new secret string.
-2. Update `SharedSecret` constant in both `Hash.ashx` and `Search.ashx`, redeploy.
-3. Update `SLEDUJTETO_PROXY_KEY` in cr-web `.env` on production, restart container.
+Secret lives in `secrets.config` (gitignored, referenced from `web.config`
+via `configSource`). Never commit it to source.
 
-Order matters only on the switch second: the proxy enforces the new key as soon
-as it lands on disk, so update cr-web's env immediately afterwards or a handful
-of requests will see 403.
+1. Generate a new secret string (≥ 32 chars, alphanumeric).
+2. Update `<add key="SharedSecret" value="…"/>` in local
+   `src/SledujteToCzProxy/secrets.config`.
+3. FTP upload the new `secrets.config` to the webroot (IIS picks it up on the
+   next request — no app pool recycle needed for `configSource` changes).
+4. Update `SLEDUJTETO_PROXY_KEY` in cr-web `.env` on production (Hetzner)
+   and restart the container.
+5. Update the `SLEDUJTETO_PROXY_KEY` GitHub Actions secret in every repo that
+   uses the proxy (`Olbrasoft/sledujtetocz-to-prehrajto`, etc.).
+6. Record the new value in `~/Dokumenty/přístupy/aspone-cz.md` (local-only).
+
+Order matters on the switch second: the proxy enforces the new key as soon
+as `secrets.config` lands on disk, so update cr-web's env immediately
+afterwards or a handful of requests will see 403.
 
 ## Upstream quirks worth knowing
 
