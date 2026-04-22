@@ -48,17 +48,35 @@ No code-behind, no build step — deploy is a plain file copy.
 ## Deploy
 
 FTP creds: `~/Dokumenty/přístupy/aspone-cz.md` (`web1.aspfree.cz`, login
-`sledujteto.aspfree.cz`). Upload `src/SledujteToCzProxy/*` to the webroot.
+`sledujteto.aspfree.cz`).
+
+**Webroot is `/www/`** on the FTP server, not `/`. Uploads to `/` are accepted
+but not served. The FTP filesystem is case-sensitive Linux and the existing
+handler filenames are lowercase (`hash.ashx`, `search.ashx`) — match that on
+upload or IIS will 404.
+
+Upload order matters when rotating secrets: push `secrets.config` first,
+then the `.ashx` handlers (which read the new value), and finally
+`web.config` (which points to `secrets.config` via `configSource`).
 
 ```bash
-# Using curl (ephemeral; no lftp config file)
 SLEDUJTETO_FTP_PASS='<from aspone-cz.md>'
 cd src/SledujteToCzProxy
-for f in Default.aspx Hash.ashx Search.ashx web.config; do
-  curl -T "$f" --user "sledujteto.aspfree.cz:$SLEDUJTETO_FTP_PASS" \
-    "ftp://web1.aspfree.cz/$f"
-done
+curl -T secrets.config --user "sledujteto.aspfree.cz:$SLEDUJTETO_FTP_PASS" \
+  "ftp://web1.aspfree.cz/www/secrets.config"
+curl -T Hash.ashx --user "sledujteto.aspfree.cz:$SLEDUJTETO_FTP_PASS" \
+  "ftp://web1.aspfree.cz/www/hash.ashx"
+curl -T Search.ashx --user "sledujteto.aspfree.cz:$SLEDUJTETO_FTP_PASS" \
+  "ftp://web1.aspfree.cz/www/search.ashx"
+curl -T web.config --user "sledujteto.aspfree.cz:$SLEDUJTETO_FTP_PASS" \
+  "ftp://web1.aspfree.cz/www/web.config"
 ```
+
+**Note on HTTPS:** aspfree.cz's 443 port has been observed timing out while
+80 responds normally. Plain HTTP is currently the reliable transport — the
+proxy is public-read-only by design (key enforces access, not confidentiality
+of the JSON body), so this is tolerable but worth fixing upstream if they
+start charging for it.
 
 Smoke test:
 
